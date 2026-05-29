@@ -1,80 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Plus,
   Search,
-  Filter,
   FileText,
   Clock,
   MoreHorizontal,
-  ChevronDown,
+  Trash2,
 } from "lucide-react";
 import type { ArticleStatus } from "@/types";
+import { getAllDrafts, deleteDraft, type Draft } from "@/lib/drafts";
 
-const mockArticles = [
-  {
-    id: "1",
-    title: "Hướng dẫn Entity SEO toàn diện 2026",
-    status: "in_review" as ArticleStatus,
-    author: "Writer A",
-    updatedAt: "2026-05-29T10:00:00Z",
-    contentScore: 85,
-    eeatScore: 8.5,
-    wordCount: 3200,
-  },
-  {
-    id: "2",
-    title: "Topical Authority: Chiến lược phủ kín chủ đề",
-    status: "draft" as ArticleStatus,
-    author: "Writer B",
-    updatedAt: "2026-05-28T14:30:00Z",
-    contentScore: 62,
-    eeatScore: 6.8,
-    wordCount: 1800,
-  },
-  {
-    id: "3",
-    title: "E-E-A-T Framework cho ngành Healthcare",
-    status: "approved" as ArticleStatus,
-    author: "Writer A",
-    updatedAt: "2026-05-27T09:15:00Z",
-    contentScore: 91,
-    eeatScore: 9.1,
-    wordCount: 4100,
-  },
-  {
-    id: "4",
-    title: "Semantic Search và tương lai của SEO",
-    status: "published" as ArticleStatus,
-    author: "Writer C",
-    updatedAt: "2026-05-26T16:45:00Z",
-    contentScore: 88,
-    eeatScore: 8.8,
-    wordCount: 2900,
-  },
-  {
-    id: "5",
-    title: "Knowledge Graph Optimization cho doanh nghiệp",
-    status: "published" as ArticleStatus,
-    author: "Writer B",
-    updatedAt: "2026-05-25T11:20:00Z",
-    contentScore: 79,
-    eeatScore: 7.5,
-    wordCount: 2500,
-  },
-  {
-    id: "6",
-    title: "Google SGE và chiến lược GEO mới nhất",
-    status: "draft" as ArticleStatus,
-    author: "Writer A",
-    updatedAt: "2026-05-24T08:00:00Z",
-    contentScore: 45,
-    eeatScore: 5.2,
-    wordCount: 900,
-  },
-];
+interface ArticleItem {
+  id: string;
+  title: string;
+  status: ArticleStatus;
+  author: string;
+  updatedAt: string;
+  contentScore: number | null;
+  eeatScore: number | null;
+  wordCount: number;
+  isDraft?: boolean;
+}
 
 const statusConfig: Record<ArticleStatus, { label: string; class: string }> = {
   draft: { label: "Draft", class: "badge-draft" },
@@ -94,8 +43,46 @@ const statusFilters: { label: string; value: ArticleStatus | "all" }[] = [
 export default function ContentListPage() {
   const [activeFilter, setActiveFilter] = useState<ArticleStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [articles, setArticles] = useState<ArticleItem[]>([]);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const filteredArticles = mockArticles.filter((article) => {
+  // Load drafts from localStorage on mount
+  useEffect(() => {
+    loadArticles();
+  }, []);
+
+  const loadArticles = () => {
+    const drafts = getAllDrafts();
+    const draftArticles: ArticleItem[] = drafts.map((d) => ({
+      id: d.id,
+      title: d.title,
+      status: d.status as ArticleStatus,
+      author: d.author,
+      updatedAt: d.updatedAt,
+      contentScore: d.contentScore,
+      eeatScore: d.eeatScore,
+      wordCount: d.wordCount,
+      isDraft: true,
+    }));
+    setArticles(draftArticles);
+  };
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (deleteConfirm === id) {
+      deleteDraft(id);
+      loadArticles();
+      setDeleteConfirm(null);
+    } else {
+      setDeleteConfirm(id);
+      // Reset confirmation after 3 seconds
+      setTimeout(() => setDeleteConfirm(null), 3000);
+    }
+  };
+
+  const filteredArticles = articles.filter((article) => {
     const matchesStatus = activeFilter === "all" || article.status === activeFilter;
     const matchesSearch =
       !searchQuery || article.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -212,14 +199,29 @@ export default function ContentListPage() {
           <div className="py-16 text-center">
             <FileText size={40} style={{ color: "var(--foreground-subtle)" }} className="mx-auto mb-3 opacity-50" />
             <p className="text-sm" style={{ color: "var(--foreground-muted)" }}>
-              No articles found
+              {articles.length === 0
+                ? "No articles yet. Create your first article!"
+                : "No articles match your filter"}
             </p>
+            {articles.length === 0 && (
+              <Link
+                href="/content/new"
+                className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg text-sm font-medium"
+                style={{
+                  background: "var(--primary-gradient)",
+                  color: "white",
+                }}
+              >
+                <Plus size={16} />
+                Create Article
+              </Link>
+            )}
           </div>
         ) : (
           filteredArticles.map((article, index) => (
             <Link
               key={article.id}
-              href={`/content/${article.id}`}
+              href={`/content/new?id=${article.id}`}
               className="grid grid-cols-12 gap-4 px-6 py-4 items-center transition-all duration-200 group animate-fade-in"
               style={{
                 borderBottom: "1px solid var(--card-border)",
@@ -240,7 +242,7 @@ export default function ContentListPage() {
                 >
                   {article.title}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: "var(--foreground-subtle)" }}>
+                <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "var(--foreground-subtle)" }}>
                   by {article.author}
                 </p>
               </div>
@@ -248,40 +250,54 @@ export default function ContentListPage() {
               {/* Status */}
               <div className="col-span-2 text-center">
                 <span
-                  className={`${statusConfig[article.status].class} text-xs font-medium px-2.5 py-1 rounded-full`}
+                  className={`${statusConfig[article.status]?.class || "badge-draft"} text-xs font-medium px-2.5 py-1 rounded-full`}
                 >
-                  {statusConfig[article.status].label}
+                  {statusConfig[article.status]?.label || "Draft"}
                 </span>
               </div>
 
               {/* Content Score */}
               <div className="col-span-1 text-center">
-                <span
-                  className="text-sm font-bold"
-                  style={{
-                    color:
-                      article.contentScore >= 80
-                        ? "var(--success)"
-                        : article.contentScore >= 60
-                        ? "var(--warning)"
-                        : "var(--danger)",
-                  }}
-                >
-                  {article.contentScore}
-                </span>
+                {article.contentScore !== null ? (
+                  <span
+                    className="text-sm font-bold"
+                    style={{
+                      color:
+                        article.contentScore >= 80
+                          ? "var(--success)"
+                          : article.contentScore >= 60
+                          ? "var(--warning)"
+                          : "var(--danger)",
+                    }}
+                  >
+                    {article.contentScore}
+                  </span>
+                ) : (
+                  <span className="text-xs" style={{ color: "var(--foreground-subtle)" }}>
+                    —
+                  </span>
+                )}
               </div>
 
               {/* E-E-A-T Score */}
               <div className="col-span-1 text-center">
-                <span className="text-sm font-medium" style={{ color: "var(--foreground-muted)" }}>
-                  {article.eeatScore}
-                </span>
+                {article.eeatScore !== null ? (
+                  <span className="text-sm font-medium" style={{ color: "var(--foreground-muted)" }}>
+                    {article.eeatScore}
+                  </span>
+                ) : (
+                  <span className="text-xs" style={{ color: "var(--foreground-subtle)" }}>
+                    —
+                  </span>
+                )}
               </div>
 
               {/* Word Count */}
               <div className="col-span-1 text-center">
                 <span className="text-xs" style={{ color: "var(--foreground-muted)" }}>
-                  {(article.wordCount / 1000).toFixed(1)}k
+                  {article.wordCount > 1000
+                    ? `${(article.wordCount / 1000).toFixed(1)}k`
+                    : article.wordCount}
                 </span>
               </div>
 
@@ -298,11 +314,15 @@ export default function ContentListPage() {
               {/* Actions */}
               <div className="col-span-1 text-center">
                 <button
-                  className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ color: "var(--foreground-muted)" }}
-                  onClick={(e) => e.preventDefault()}
+                  className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                  style={{
+                    color: deleteConfirm === article.id ? "var(--danger)" : "var(--foreground-muted)",
+                    background: deleteConfirm === article.id ? "var(--danger-light)" : "transparent",
+                  }}
+                  onClick={(e) => handleDelete(article.id, e)}
+                  title={deleteConfirm === article.id ? "Click again to confirm delete" : "Delete draft"}
                 >
-                  <MoreHorizontal size={16} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             </Link>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Bold,
   Italic,
@@ -20,10 +21,12 @@ import {
   Send,
   Loader2,
   RefreshCw,
+  Check,
 } from "lucide-react";
 import ModelSelector from "@/components/ai/model-selector";
 import GenerationDialog from "@/components/ai/generation-dialog";
 import { DEFAULT_MODELS } from "@/lib/models";
+import { saveDraft, getDraft, type Draft } from "@/lib/drafts";
 
 interface ToolbarButton {
   icon: React.ElementType;
@@ -92,16 +95,83 @@ const eeatBarColors = [
 ];
 
 export default function ContentEditor() {
+  return (
+    <Suspense>
+      <ContentEditorInner />
+    </Suspense>
+  );
+}
+
+function ContentEditorInner() {
+  const searchParams = useSearchParams();
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
   const [model, setModel] = useState<string>(DEFAULT_MODELS.content);
   const [showGenerationDialog, setShowGenerationDialog] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [language, setLanguage] = useState("Vietnamese");
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Analysis state
   const [entities, setEntities] = useState<EntityItem[]>([]);
   const [review, setReview] = useState<ReviewData | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
+
+  // Load draft from URL params
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (id) {
+      const draft = getDraft(id);
+      if (draft) {
+        setDraftId(draft.id);
+        setTitle(draft.title);
+        setContent(draft.content);
+        setModel(draft.model || DEFAULT_MODELS.content);
+        setLanguage(draft.language || "Vietnamese");
+      }
+    }
+  }, [searchParams]);
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    if (!content && !title) return;
+
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      handleSaveDraft(true);
+    }, 30000);
+
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, title]);
+
+  // Save draft handler
+  const handleSaveDraft = useCallback(
+    (isAutoSave = false) => {
+      if (!title && !content) return;
+      setSaveStatus("saving");
+
+      const saved = saveDraft({
+        id: draftId || undefined,
+        title: title || "Untitled Draft",
+        content,
+        model,
+        language,
+        contentScore: review?.content_score ?? null,
+        eeatScore: review?.eeat_scores?.overall ?? null,
+      });
+
+      if (!draftId) setDraftId(saved.id);
+
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), isAutoSave ? 2000 : 3000);
+    },
+    [draftId, title, content, model, language, review]
+  );
 
   const handleToolbarAction = useCallback((action: string) => {
     console.log("Toolbar action:", action);
@@ -272,16 +342,30 @@ export default function ContentEditor() {
 
           {/* Save & Submit */}
           <div className="ml-auto flex items-center gap-2">
+            {saveStatus === "saved" && (
+              <span className="flex items-center gap-1 text-[11px] animate-fade-in" style={{ color: "var(--success)" }}>
+                <Check size={12} />
+                Saved
+              </span>
+            )}
             <button
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
+              onClick={() => handleSaveDraft(false)}
+              disabled={saveStatus === "saving" || (!title && !content)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 disabled:opacity-50"
               style={{
-                background: "rgba(255, 255, 255, 0.06)",
-                color: "var(--foreground-muted)",
-                border: "1px solid var(--border)",
+                background: saveStatus === "saved" ? "var(--success-light)" : "rgba(255, 255, 255, 0.06)",
+                color: saveStatus === "saved" ? "var(--success)" : "var(--foreground-muted)",
+                border: `1px solid ${saveStatus === "saved" ? "rgba(34, 197, 94, 0.2)" : "var(--border)"}`,
               }}
             >
-              <Save size={14} />
-              Save Draft
+              {saveStatus === "saving" ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : saveStatus === "saved" ? (
+                <Check size={14} />
+              ) : (
+                <Save size={14} />
+              )}
+              {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "Saved!" : "Save Draft"}
             </button>
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
