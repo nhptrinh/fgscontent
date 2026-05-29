@@ -1,0 +1,37 @@
+import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+
+const inter = Inter({
+  variable: "--font-geist-sans",
+  subsets: ["latin", "vietnamese"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "FoogleSEO — Semantic Content Platform",
+  description:
+    "FoogleSEO - Nền tảng tạo nội dung chuẩn Semantic Content & Entity SEO. Tối ưu E-E-A-T, phủ kín Topical Authority.",
+  keywords: ["FoogleSEO", "SEO", "Entity SEO", "Semantic Content", "E-E-A-T", "GEO"],
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="vi"
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}

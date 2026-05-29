@@ -1,0 +1,323 @@
+@import "tailwindcss";
+
+/* ========================================
+   FOOGLESEO — DESIGN SYSTEM
+   Blue gradient palette extracted from logo:
+   Light Blue #4AA5E2 → Medium Blue #2577B5 → Dark Navy #0C2340
+   ======================================== */
+
+:root {
+  /* Primary Palette — FoogleSEO Blue Gradient */
+  --primary: #2B7CC5;
+  --primary-hover: #3D9AE0;
+  --primary-light: rgba(43, 124, 197, 0.12);
+  --primary-gradient: linear-gradient(135deg, #4AA5E2, #1A5F96);
+
+  /* Accent — Dark Navy (from "seo" in logo) */
+  --accent: #0C2340;
+  --accent-hover: #14355A;
+  --accent-light: rgba(12, 35, 64, 0.25);
+
+  /* Secondary — Lighter blue for highlights */
+  --secondary: #4AA5E2;
+  --secondary-light: rgba(74, 165, 226, 0.12);
+
+  /* Semantic Colors */
+  --success: #22c55e;
+  --success-light: rgba(34, 197, 94, 0.12);
+  --warning: #f59e0b;
+  --warning-light: rgba(245, 158, 11, 0.12);
+  --danger: #ef4444;
+  --danger-light: rgba(239, 68, 68, 0.12);
+  --info: #3b82f6;
+  --info-light: rgba(59, 130, 246, 0.12);
+
+  /* Dark Theme (default) — with subtle blue undertone */
+  --background: #060D17;
+  --background-secondary: #0A1423;
+  --foreground: #f0f4f8;
+  --foreground-muted: #8ba3be;
+  --foreground-subtle: #5a7590;
+
+  /* Surface & Cards */
+  --card: #0C1829;
+  --card-hover: #111F34;
+  --card-border: rgba(74, 165, 226, 0.08);
+  --card-glow: rgba(43, 124, 197, 0.08);
+
+  /* Borders */
+  --border: rgba(74, 165, 226, 0.1);
+  --border-hover: rgba(74, 165, 226, 0.2);
+  --border-active: rgba(43, 124, 197, 0.5);
+
+  /* Sidebar */
+  --sidebar-bg: #081020;
+  --sidebar-border: rgba(74, 165, 226, 0.08);
+  --sidebar-item-hover: rgba(74, 165, 226, 0.06);
+  --sidebar-item-active: rgba(43, 124, 197, 0.15);
+
+  /* Input */
+  --input-bg: rgba(74, 165, 226, 0.05);
+  --input-border: rgba(74, 165, 226, 0.12);
+  --input-focus: rgba(43, 124, 197, 0.5);
+
+  /* Glass effect */
+  --glass-bg: rgba(12, 24, 41, 0.75);
+  --glass-border: rgba(74, 165, 226, 0.1);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(43, 124, 197, 0.15);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-secondary: var(--secondary);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-border: var(--border);
+  --color-muted: var(--foreground-muted);
+  --color-subtle: var(--foreground-subtle);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 165, 226, 0.12) transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ========================================
+   GLASSMORPHISM CARD
+   ======================================== */
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+}
+
+/* ========================================
+   GRADIENT EFFECTS
+   ======================================== */
+
+.gradient-text {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-border {
+  position: relative;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: var(--primary-gradient);
+  z-index: -1;
+  opacity: 0.3;
+  transition: opacity var(--transition-base);
+}
+
+.gradient-border:hover::before {
+  opacity: 0.6;
+}
+
+/* ========================================
+   STAT CARD GRADIENT BACKGROUNDS
+   (FoogleSEO blue tones)
+   ======================================== */
+
+.stat-card-blue {
+  background: linear-gradient(135deg, rgba(43, 124, 197, 0.15), rgba(26, 95, 150, 0.08));
+  border: 1px solid rgba(43, 124, 197, 0.2);
+}
+
+.stat-card-light-blue {
+  background: linear-gradient(135deg, rgba(74, 165, 226, 0.15), rgba(43, 124, 197, 0.08));
+  border: 1px solid rgba(74, 165, 226, 0.2);
+}
+
+.stat-card-navy {
+  background: linear-gradient(135deg, rgba(12, 35, 64, 0.4), rgba(20, 53, 90, 0.2));
+  border: 1px solid rgba(20, 53, 90, 0.3);
+}
+
+.stat-card-emerald {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.08));
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.stat-card-amber {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(43, 124, 197, 0); }
+  50% { box-shadow: 0 0 20px 4px rgba(43, 124, 197, 0.15); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-left {
+  animation: slideInLeft 0.4s ease-out forwards;
+}
+
+.animate-slide-right {
+  animation: slideInRight 0.4s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s infinite;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(74, 165, 226, 0.04) 0%,
+    rgba(74, 165, 226, 0.08) 50%,
+    rgba(74, 165, 226, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ========================================
+   STATUS BADGES
+   ======================================== */
+
+.badge-draft {
+  background: rgba(139, 163, 190, 0.12);
+  color: #8ba3be;
+  border: 1px solid rgba(139, 163, 190, 0.2);
+}
+
+.badge-review {
+  background: var(--warning-light);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge-approved {
+  background: var(--info-light);
+  color: var(--info);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.badge-published {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+/* ========================================
+   FOCUS STYLES
+   ======================================== */
+
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--primary);
+}
+
+/* ========================================
+   TOOLTIP
+   ======================================== */
+
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 6px 10px;
+  background: #14355A;
+  color: #f0f4f8;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all var(--transition-fast);
+  border: 1px solid rgba(74, 165, 226, 0.15);
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
