@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 import { chat, chatJSON, chatStream } from "./openrouter";
+import type { UsageStats } from "./openrouter";
+import { calculateCost } from "./openrouter";
 import { PROMPTS } from "./prompts";
 import { DEFAULT_MODELS } from "./models";
 import type { ChatMessage } from "./openrouter";
@@ -90,7 +92,7 @@ export async function generateOutline(
   language: string = "Vietnamese",
   eeatNotes: string = "",
   model?: string
-): Promise<ArticleOutline> {
+): Promise<{ data: ArticleOutline; usage: UsageStats }> {
   const messages: ChatMessage[] = [
     {
       role: "system",
@@ -214,9 +216,12 @@ export async function generateFullArticle(
   entities: string[],
   language: string = "Vietnamese",
   model?: string
-): Promise<string> {
+): Promise<{ content: string; usage: UsageStats }> {
   let fullContent = `# ${outline.title}\n\n`;
   let previousContext = "";
+  let totalPromptTokens = 0;
+  let totalCompletionTokens = 0;
+  const modelId = model || DEFAULT_MODELS.content;
 
   for (const section of outline.sections) {
     // Add heading
@@ -224,34 +229,60 @@ export async function generateFullArticle(
     fullContent += `${headingPrefix} ${section.heading}\n\n`;
 
     // Generate section content
-    const sectionContent = await generateSection(
-      section,
-      outline.title,
-      entities,
-      language,
-      previousContext,
-      model
+    const response = await chat(
+      [
+        {
+          role: "system",
+          content: "You are an expert content writer. Write engaging, well-researched content in Markdown format.",
+        },
+        {
+          role: "user",
+          content: PROMPTS.GENERATE_SECTION(
+            JSON.stringify({ heading: section.heading, key_points: section.key_points, subsections: section.subsections?.map(s => ({ heading: s.heading, key_points: s.key_points })) }),
+            outline.title,
+            entities,
+            language,
+            previousContext
+          ),
+        },
+      ],
+      { model: modelId, temperature: 0.7, maxTokens: 2048 }
     );
 
-    fullContent += sectionContent + "\n\n";
-    previousContext = sectionContent;
+    fullContent += response.content + "\n\n";
+    previousContext = response.content;
+    totalPromptTokens += response.usage.promptTokens;
+    totalCompletionTokens += response.usage.completionTokens;
 
     // Generate subsections
     for (const sub of section.subsections || []) {
       const subPrefix = "#".repeat(sub.heading_level);
       fullContent += `${subPrefix} ${sub.heading}\n\n`;
 
-      const subContent = await generateSection(
-        { ...sub, eeat_signals: [], subsections: [] } as OutlineSection,
-        outline.title,
-        sub.entities_to_embed || [],
-        language,
-        previousContext,
-        model
+      const subResponse = await chat(
+        [
+          {
+            role: "system",
+            content: "You are an expert content writer. Write engaging, well-researched content in Markdown format.",
+          },
+          {
+            role: "user",
+            content: PROMPTS.GENERATE_SECTION(
+              JSON.stringify({ heading: sub.heading, key_points: sub.key_points }),
+              outline.title,
+              sub.entities_to_embed || [],
+              language,
+              previousContext
+            ),
+          },
+        ],
+        { model: modelId, temperature: 0.7, maxTokens: 2048 }
       );
 
-      fullContent += subContent + "\n\n";
-      previousContext = subContent;
+      fullContent += subResponse.content + "\n\n";
+      previousContext = subResponse.content;
+      totalPromptTokens += subResponse.usage.promptTokens;
+      totalCompletionTokens += subResponse.usage.completionTokens;
     }
   }
 
@@ -263,7 +294,16 @@ export async function generateFullArticle(
     }
   }
 
-  return fullContent;
+  return {
+    content: fullContent,
+    usage: {
+      promptTokens: totalPromptTokens,
+      completionTokens: totalCompletionTokens,
+      totalTokens: totalPromptTokens + totalCompletionTokens,
+      costUSD: calculateCost(modelId, totalPromptTokens, totalCompletionTokens),
+      model: modelId,
+    },
+  };
 }
 
 /**
@@ -273,7 +313,7 @@ export async function generateMeta(
   articleContent: string,
   language: string = "Vietnamese",
   model?: string
-): Promise<ArticleMeta> {
+): Promise<{ data: ArticleMeta; usage: UsageStats }> {
   const messages: ChatMessage[] = [
     {
       role: "system",
@@ -305,7 +345,7 @@ export async function reviewContent(
   entities: string[],
   topic: string,
   model?: string
-): Promise<ContentReview> {
+): Promise<{ data: ContentReview; usage: UsageStats }> {
   const messages: ChatMessage[] = [
     {
       role: "system",

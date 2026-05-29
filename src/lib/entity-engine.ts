@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { chatJSON } from "./openrouter";
+import type { UsageStats } from "./openrouter";
 import { PROMPTS } from "./prompts";
 import { DEFAULT_MODELS } from "./models";
 import type { ChatMessage } from "./openrouter";
@@ -58,7 +59,7 @@ export async function extractEntities(
   content: string,
   topic: string,
   model?: string
-): Promise<EntityExtractionResult> {
+): Promise<{ data: EntityExtractionResult; usage: UsageStats }> {
   const messages: ChatMessage[] = [
     {
       role: "system",
@@ -89,7 +90,7 @@ export async function suggestEntities(
   existingEntities: string[],
   language: string = "Vietnamese",
   model?: string
-): Promise<EntitySuggestionResult> {
+): Promise<{ data: EntitySuggestionResult; usage: UsageStats }> {
   const messages: ChatMessage[] = [
     {
       role: "system",

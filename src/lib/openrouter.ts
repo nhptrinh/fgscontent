@@ -4,6 +4,7 @@
 // ========================================
 
 import { z } from "zod";
+import { getModelConfig } from "./models";
 
 // --- Types ---
 
@@ -29,12 +30,36 @@ export interface ChatResponse {
     completionTokens: number;
     totalTokens: number;
   };
+  costUSD?: number;
   finishReason: string;
 }
 
 export interface StreamChunk {
   content: string;
   done: boolean;
+}
+
+export interface UsageStats {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costUSD: number;
+  model: string;
+}
+
+/**
+ * Calculate cost from token usage and model pricing
+ */
+export function calculateCost(
+  modelId: string,
+  promptTokens: number,
+  completionTokens: number
+): number {
+  const config = getModelConfig(modelId);
+  if (!config) return 0;
+  const inputCost = (promptTokens / 1000) * config.costPer1kInput;
+  const outputCost = (completionTokens / 1000) * config.costPer1kOutput;
+  return Math.round((inputCost + outputCost) * 1_000_000) / 1_000_000; // Round to 6 decimals
 }
 
 // --- OpenRouter Client ---
@@ -109,6 +134,11 @@ export async function chat(
           completionTokens: data.usage?.completion_tokens || 0,
           totalTokens: data.usage?.total_tokens || 0,
         },
+        costUSD: calculateCost(
+          options.model,
+          data.usage?.prompt_tokens || 0,
+          data.usage?.completion_tokens || 0
+        ),
         finishReason: choice?.finish_reason || "stop",
       };
     } catch (err) {
@@ -243,7 +273,7 @@ export async function chatJSON<T>(
   messages: ChatMessage[],
   options: ChatOptions,
   schema: z.ZodSchema<T>
-): Promise<T> {
+): Promise<{ data: T; usage: UsageStats }> {
   // Add JSON instruction to system message
   const jsonMessages: ChatMessage[] = [
     ...messages,
@@ -268,7 +298,17 @@ export async function chatJSON<T>(
     }
 
     const parsed = JSON.parse(jsonStr);
-    return schema.parse(parsed);
+    const data = schema.parse(parsed);
+    return {
+      data,
+      usage: {
+        promptTokens: response.usage.promptTokens,
+        completionTokens: response.usage.completionTokens,
+        totalTokens: response.usage.totalTokens,
+        costUSD: response.costUSD ?? 0,
+        model: response.model,
+      },
+    };
   } catch (err) {
     throw new Error(
       `Failed to parse LLM JSON response: ${err instanceof Error ? err.message : "Unknown error"}\n\nRaw response:\n${response.content.slice(0, 500)}`

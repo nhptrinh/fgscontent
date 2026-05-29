@@ -9,6 +9,8 @@ import {
   FileText,
   Check,
   AlertCircle,
+  DollarSign,
+  Zap,
 } from "lucide-react";
 import ModelSelector from "./model-selector";
 import { DEFAULT_MODELS } from "@/lib/models";
@@ -39,6 +41,15 @@ interface Outline {
   faq: { question: string; answer: string }[];
 }
 
+interface CostEntry {
+  step: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  costUSD: number;
+  model: string;
+}
+
 export default function GenerationDialog({
   open,
   onClose,
@@ -52,8 +63,12 @@ export default function GenerationDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");
+  const [costs, setCosts] = useState<CostEntry[]>([]);
 
   if (!open) return null;
+
+  const totalCost = costs.reduce((sum, c) => sum + c.costUSD, 0);
+  const totalTokens = costs.reduce((sum, c) => sum + c.totalTokens, 0);
 
   const handleGenerateOutline = async () => {
     if (!keyword.trim()) return;
@@ -80,6 +95,11 @@ export default function GenerationDialog({
         (e: { name: string }) => e.name
       ) || [];
 
+      // Track entity suggestion cost
+      if (entityData.usage) {
+        setCosts(prev => [...prev, { step: "Entity Analysis", ...entityData.usage }]);
+      }
+
       setProgress("Đang tạo outline bài viết...");
 
       // Generate outline
@@ -97,6 +117,12 @@ export default function GenerationDialog({
 
       if (!outlineRes.ok) throw new Error("Failed to generate outline");
       const outlineData = await outlineRes.json();
+
+      // Track outline cost
+      if (outlineData.usage) {
+        setCosts(prev => [...prev, { step: "Outline Generation", ...outlineData.usage }]);
+      }
+
       setOutline(outlineData);
       setStep("outline");
     } catch (err) {
@@ -134,6 +160,11 @@ export default function GenerationDialog({
       if (!res.ok) throw new Error("Failed to generate article");
       const data = await res.json();
 
+      // Track article generation cost
+      if (data.usage) {
+        setCosts(prev => [...prev, { step: "Article Writing", ...data.usage }]);
+      }
+
       setStep("done");
       onGenerated(data.content, outline.title);
     } catch (err) {
@@ -154,6 +185,7 @@ export default function GenerationDialog({
     setError("");
     setProgress("");
     setLoading(false);
+    setCosts([]);
   };
 
   return (
@@ -456,20 +488,80 @@ export default function GenerationDialog({
 
           {/* Step: Done */}
           {step === "done" && (
-            <div className="py-8 text-center space-y-4">
-              <div
-                className="mx-auto w-12 h-12 rounded-full flex items-center justify-center"
-                style={{ background: "var(--success-light)" }}
-              >
-                <Check size={24} style={{ color: "var(--success)" }} />
+            <div className="py-6 space-y-5">
+              <div className="text-center space-y-3">
+                <div
+                  className="mx-auto w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{ background: "var(--success-light)" }}
+                >
+                  <Check size={24} style={{ color: "var(--success)" }} />
+                </div>
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: "var(--foreground)" }}
+                >
+                  Article generated successfully!
+                </p>
               </div>
-              <p
-                className="text-sm font-medium"
-                style={{ color: "var(--foreground)" }}
+
+              {/* Cost Summary Card */}
+              <div
+                className="rounded-xl overflow-hidden"
+                style={{
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid var(--border)",
+                }}
               >
-                Article generated successfully!
-              </p>
-              <p className="text-xs" style={{ color: "var(--foreground-subtle)" }}>
+                {/* Header */}
+                <div
+                  className="flex items-center justify-between px-4 py-3 border-b"
+                  style={{ borderColor: "var(--border)" }}
+                >
+                  <div className="flex items-center gap-2">
+                    <DollarSign size={14} style={{ color: "var(--warning)" }} />
+                    <span className="text-xs font-semibold" style={{ color: "var(--foreground)" }}>
+                      Token Cost Summary
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px]" style={{ color: "var(--foreground-subtle)" }}>
+                      {totalTokens.toLocaleString()} tokens
+                    </span>
+                    <span
+                      className="text-sm font-bold px-2 py-0.5 rounded"
+                      style={{
+                        background: totalCost > 0.01 ? "var(--warning-light)" : "var(--success-light)",
+                        color: totalCost > 0.01 ? "var(--warning)" : "var(--success)",
+                      }}
+                    >
+                      ${totalCost.toFixed(6)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Per-step breakdown */}
+                <div className="divide-y" style={{ borderColor: "var(--border)" }}>
+                  {costs.map((cost, i) => (
+                    <div key={i} className="flex items-center justify-between px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <Zap size={10} style={{ color: "var(--primary)" }} />
+                        <span className="text-[11px] font-medium" style={{ color: "var(--foreground-muted)" }}>
+                          {cost.step}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-[11px]" style={{ color: "var(--foreground-subtle)" }}>
+                        <span>{cost.promptTokens.toLocaleString()} in</span>
+                        <span>{cost.completionTokens.toLocaleString()} out</span>
+                        <span className="font-mono font-medium" style={{ color: "var(--foreground-muted)" }}>
+                          ${cost.costUSD.toFixed(6)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[11px] text-center" style={{ color: "var(--foreground-subtle)" }}>
                 Content has been loaded into the editor. You can now edit and refine.
               </p>
             </div>
@@ -502,6 +594,14 @@ export default function GenerationDialog({
           >
             {step === "done" ? "Close" : "Reset"}
           </button>
+
+          {/* Running cost badge */}
+          {costs.length > 0 && step !== "done" && (
+            <span className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", color: "var(--foreground-subtle)" }}>
+              <DollarSign size={10} />
+              ${totalCost.toFixed(6)} ({totalTokens.toLocaleString()} tokens)
+            </span>
+          )}
 
           {step === "input" && (
             <button

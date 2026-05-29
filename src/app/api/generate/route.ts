@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const result = await generateOutline(
+      const { data: result, usage } = await generateOutline(
         keyword,
         entities || [],
         language || "Vietnamese",
         eeatNotes || "",
         model
       );
-      return NextResponse.json(result);
+      return NextResponse.json({ ...result, usage });
     }
 
     // --- Generate Full Article (non-streaming) ---
@@ -52,7 +52,10 @@ export async function POST(request: NextRequest) {
         language || "Vietnamese",
         model
       );
-      return NextResponse.json({ content: result });
+      return NextResponse.json({
+        content: result.content,
+        usage: result.usage,
+      });
     }
 
     // --- Stream a single section ---
@@ -88,8 +91,8 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const result = await generateMeta(content, language || "Vietnamese", model);
-      return NextResponse.json(result);
+      const { data: result, usage } = await generateMeta(content, language || "Vietnamese", model);
+      return NextResponse.json({ ...result, usage });
     }
 
     // --- Review Content ---
@@ -100,13 +103,13 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const result = await reviewContent(
+      const { data: result, usage } = await reviewContent(
         content,
         entities || [],
         topic,
         model
       );
-      return NextResponse.json(result);
+      return NextResponse.json({ ...result, usage });
     }
 
     return NextResponse.json(

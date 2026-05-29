@@ -14,22 +14,34 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "topical_map") {
-      const topicalMap = await generateTopicalMap(keyword, language, model);
-      return NextResponse.json({ topicalMap });
+      const { data: topicalMap, usage } = await generateTopicalMap(keyword, language, model);
+      return NextResponse.json({ topicalMap, usage });
     }
 
     if (action === "research") {
-      const research = await researchTopic(keyword, language, model);
-      return NextResponse.json({ research });
+      const { data: research, usage } = await researchTopic(keyword, language, model);
+      return NextResponse.json({ research, usage });
     }
 
     // Full: both research + topical map
-    const [research, topicalMap] = await Promise.all([
+    const [researchResult, mapResult] = await Promise.all([
       researchTopic(keyword, language, model),
       generateTopicalMap(keyword, language, model),
     ]);
 
-    return NextResponse.json({ research, topicalMap });
+    const totalUsage = {
+      promptTokens: researchResult.usage.promptTokens + mapResult.usage.promptTokens,
+      completionTokens: researchResult.usage.completionTokens + mapResult.usage.completionTokens,
+      totalTokens: researchResult.usage.totalTokens + mapResult.usage.totalTokens,
+      costUSD: researchResult.usage.costUSD + mapResult.usage.costUSD,
+      model: researchResult.usage.model,
+    };
+
+    return NextResponse.json({
+      research: researchResult.data,
+      topicalMap: mapResult.data,
+      usage: totalUsage,
+    });
   } catch (error) {
     console.error("[API /research]", error);
     return NextResponse.json(

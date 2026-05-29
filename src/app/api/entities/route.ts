@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const result = await extractEntities(content, topic, model);
-      return NextResponse.json(result);
+      const { data: result, usage } = await extractEntities(content, topic, model);
+      return NextResponse.json({ ...result, usage });
     }
 
     if (action === "suggest") {
@@ -31,13 +31,13 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const result = await suggestEntities(
+      const { data: result, usage } = await suggestEntities(
         topic,
         existingEntities || [],
         language || "Vietnamese",
         model
       );
-      return NextResponse.json(result);
+      return NextResponse.json({ ...result, usage });
     }
 
     return NextResponse.json(

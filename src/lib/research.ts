@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { chat, chatJSON } from "./openrouter";
+import type { UsageStats } from "./openrouter";
 import { PROMPTS } from "./prompts";
 import { DEFAULT_MODELS } from "./models";
 import type { ChatMessage } from "./openrouter";
@@ -68,7 +69,7 @@ export async function researchTopic(
   keyword: string,
   language: string = "Vietnamese",
   model?: string
-): Promise<TopicResearch> {
+): Promise<{ data: TopicResearch; usage: UsageStats }> {
   const messages: ChatMessage[] = [
     {
       role: "system",
@@ -98,7 +99,7 @@ export async function generateTopicalMap(
   keyword: string,
   language: string = "Vietnamese",
   model?: string
-): Promise<TopicalMap> {
+): Promise<{ data: TopicalMap; usage: UsageStats }> {
   const messages: ChatMessage[] = [
     {
       role: "system",
